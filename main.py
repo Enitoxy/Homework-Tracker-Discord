@@ -4,7 +4,6 @@ import discord
 import datetime
 import asyncio
 import sys
-import pymongo
 
 
 #FROM DISCORD
@@ -126,11 +125,10 @@ async def status_task():
     while True:
         await bot.change_presence(activity=discord.Game(name="Now in Alpha!"))
         await asyncio.sleep(120)
-        await bot.change_presence(activity=discord.Game(name="Turn off the phone and study!"))
-        await asyncio.sleep(120)
         await bot.change_presence(activity=discord.Game(name="beep boop"))
         await asyncio.sleep(120)
         await bot.change_presence(activity=discord.Game(name="Supports Slash Commands!"))
+        await asyncio.sleep(120)
 
 
 
