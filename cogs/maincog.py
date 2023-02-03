@@ -13,10 +13,12 @@ now = datetime.now()
 
 #DOTENV
 load_dotenv()
-MONGODB = os.getenv('MONGODB_PASSWORD')
+DB_USER = os.getenv('DB_USER')
+DB_PASS = os.getenv('DB_PASS')
+DB_CLUSTER = os.getenv('DB_CLUSTER')
 
 
-mdbclient = pymongo.MongoClient(f"{MONGODB}")
+mdbclient = pymongo.MongoClient(f"mongodb+srv://{DB_USER}:{DB_PASS}@{DB_CLUSTER}.mongodb.net/?retryWrites=true&w=majority")
 registered_ids = mdbclient.registered_ids
 
 
@@ -27,12 +29,14 @@ class Test(commands.Cog):
 
 
     #PING COMMAND
+    #REPURPOSE AS DEVINFO COMMAND
     @app_commands.command(name="ping", description="Shows the latency of the bot.")
     async def ping(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message('Ping: {0}ms'.format(round(self.bot.latency, 3)), ephemeral=False)
 
     
     @app_commands.command(name="myhomework", description="Lists all of your homework!")
+    #List seems to be working thus far - Make list (or tuple idk which it is) for cycling through list (with embeds)
     #Cycles through _idlist with buttons
     #Has a (Mark Complete) button
     #Has a (Delete) button
@@ -40,7 +44,7 @@ class Test(commands.Cog):
         await interaction.response.defer(ephemeral=True)
         author = interaction.user.id
         key = {'author': author}
-        _idlist = "\r\n".join(f"> {id['id']}" for id in registered_ids.homework.find(key))
+        _idlist = "\r\n".join(f"> {title['title']}" for title in registered_ids.homework.find(key))
         print(_idlist)
         await interaction.followup.send(f"Your IDs:\n\n{_idlist}")
 
