@@ -48,6 +48,7 @@ class Bot(commands.Bot):
         print('Homework Tracker is ONLINE!')
         print(timestamp.strftime("T: %d/%m/%Y %H:%M:%S"))
         print('Ping: {0}ms'.format(round(bot.latency, 3)))
+        print("-------------------")
 
         #BOT STATUS LOOP
         bot.loop.create_task(status_task())
