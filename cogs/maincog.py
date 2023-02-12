@@ -1,9 +1,9 @@
 import discord
 import pymongo
 import os
-import random
 from typing import List
 from bson import ObjectId, errors
+from collections import deque
 
 from discord import app_commands, ui
 from discord.ext import commands
@@ -46,32 +46,56 @@ class addHW(ui.Modal, title="Add your homework!"):
         await interaction.response.send_message(f"Homework added successfully!\n> Unique ID: {id}", ephemeral=True)
 
 
-#Pagination stuff (of which I understand absolutely nothing)
-"""class PaginationView(discord.ui.View):
-    def __init__(self, pages:list, timeout:None):
-        super().__init__(timeout=timeout)
+class PaginatorView(discord.ui.View):
+    def __init__(self, embeds: List[discord.Embed]) -> None:
+        super().__init__(timeout=30)
 
-        self.current_page=0
-        self.pages = pages
-        
-    @discord.ui.button(label="Next", style=discord.ButtonStyle.primary)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        self.current_page += 1
-        
+        self._embeds = embeds
+        self._queue = deque(embeds)
+        self._initial = embeds[0]
+        self._len = len(embeds)
+        self._current_page = 1
+        self.children[0].disabled = True
+        self._queue[0].set_footer(text=f"Page {self._current_page}/{self._len}")
 
-    @discord.ui.button(label="Previous", style=discord.ButtonStyle.primary)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
-        self.current_page -= 1
+    async def update_buttons(self, interaction: discord.Interaction) -> None:
+        for i in self._queue:
+            i.set_footer(text=f"Page {self._current_page}/{self._len}")
+        self._queue[0].set_footer(text=f"Page {self._current_page}/{self._len}")
+        if self._current_page == self._len:
+            self.children[0].disabled = True
+        else:
+            self.children[0].disabled = False
 
-    @discord.ui.button(label="Mark Complete", style=discord.ButtonStyle.green)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()
+        if self._current_page == 1:
+            self.children[0].disabled = True
+        else:
+            self.children[0].disabled = False
 
-    @discord.ui.button(label="Delete", style=discord.ButtonStyle.red)
-    async def next_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        await interaction.response.defer()"""
+        await interaction.message.ed(view=self)
+
+    
+    @discord.ui.button(label="Previous")
+    async def previous(self, interaction: discord.Interaction, _):
+        self._queue.rotate(-1)
+        embed = self._queue[0]
+        self._current_page -= 1
+        await self.update_buttons(interaction)
+        await interaction.response.edit_message(embed=embed)
+
+    @discord.ui.button(label="Next")
+    async def next(self, interaction: discord.Interaction, _):
+        self._queue.rotate(1)
+        embed = self._queue[0]
+        self._current_page += 1
+        await self.update_buttons(interaction)
+        await interaction.response.edit_message(embed=embed)
+
+    #DELETE & MARK COMPLETE BUTTONS
+
+    @property
+    def initial(self) -> discord.Embed:
+        return self._initial
 
 
 #COG CLASS
@@ -79,52 +103,49 @@ class MainCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot = bot
 
-
+    
     #PING COMMAND
     #REPURPOSE AS DEVINFO COMMAND
     @app_commands.command(name="ping", description="Shows the latency of the bot.")
     async def ping(self, interaction: discord.Interaction) -> None:
         await interaction.response.send_message('Ping: {0}ms'.format(round(self.bot.latency, 3)), ephemeral=False)
 
-    #Needs fixing. A lot of fixing.
-    """@app_commands.command(name="myhomework", description="Lists all of your homework!")
-    #Has a (Mark Complete) button - DONE
-    #Has a (Delete) button - DONE
-    #Stuff that didn't make sense - DONE (NESTED DICTS)
+    #MYHOMEWORK COMMAND
+    @app_commands.command(name="myhomework", description="Lists all of your homework!")
     async def myhomework(self, interaction: discord.Interaction) -> None:
         await interaction.response.defer(ephemeral=True)
-
-        pagination_view = PaginationView()
-        pagination_view.data = idlist
-
+        embeds = []
+        doc={}
         idlist = []
+        index = -1
         author = interaction.user.id
         key = {'author': author}
-        doc={}
 
         for document in registered_ids.homework.find(key):
-            idlist.append(str(document['_id'])) #Gets author's documents' IDs
+            index = index + 1
+            idlist.append(str(document['_id']))
 
-            # Adds a dict per _id (named as _id) in doc dict
             doc[str(document['_id'])] = dict(
-
                 title = document['title'],
                 subject = document['subject'],
                 description = document['description'],
                 complete = document['complete'],
                 date = document['date'],
                 _id = document['_id']
-
             )
 
-        embed = discord.Embed(title='Your Homework')
-        embed.add_field(name='Title:', value=doc['63dadc4c641286815985fcb5']['title'], inline=False)
-        embed.add_field(name='Subject:', value=doc['subject'], inline=False)
-        embed.add_field(name='Description:', value=doc['description'], inline=False)
-        embed.add_field(name='Complete:', value=doc['complete'], inline=False)
-        embed.add_field(name='Date:', value=doc['date'], inline=False)
-        embed.add_field(name='ID:', value=doc['_id'], inline=False)
-        await interaction.followup.send(embed=embed)"""
+            embed = discord.Embed(title=f'Your Homework')
+            embed.add_field(name='Title:', value=doc[f'{idlist[index]}']['title'], inline=False)
+            embed.add_field(name='Subject:', value=doc[f'{idlist[index]}']['subject'], inline=False)
+            embed.add_field(name='Description:', value=doc[f'{idlist[index]}']['description'], inline=False)
+            embed.add_field(name='Complete:', value=doc[f'{idlist[index]}']['complete'], inline=False)
+            embed.add_field(name='Date:', value=doc[f'{idlist[index]}']['date'], inline=False)
+            embed.add_field(name='ID:', value=doc[f'{idlist[index]}']['_id'], inline=False)
+
+            embeds.append(embed)
+        
+        view = PaginatorView(embeds)
+        await interaction.followup.send(embed=view.initial, view=view)
 
 
     @app_commands.command(name="add", description="Adds homework to your list!")
@@ -147,7 +168,12 @@ class MainCog(commands.Cog):
             authorid = document['author']
             
         if author != authorid:
-            await interaction.followup.send("The ID doesn't exist or the ID isn't yours!")
+            embed = discord.Embed(
+                title="Oops!",
+                description="You don't have homework with this ID!",
+                color=0xffffff
+            )
+            await interaction.followup.send(embed=embed, ephemeral=True)
 
         else:
             embed = discord.Embed(title=f'Your Homework - ID: {id}', color=0xffffff)
