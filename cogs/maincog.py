@@ -61,18 +61,17 @@ class PaginatorView(discord.ui.View):
     async def update_buttons(self, interaction: discord.Interaction) -> None:
         for i in self._queue:
             i.set_footer(text=f"Page {self._current_page}/{self._len}")
-        self._queue[0].set_footer(text=f"Page {self._current_page}/{self._len}")
         if self._current_page == self._len:
-            self.children[0].disabled = True
+            self.children[1].disabled = True
         else:
-            self.children[0].disabled = False
+            self.children[1].disabled = False
 
         if self._current_page == 1:
             self.children[0].disabled = True
         else:
             self.children[0].disabled = False
 
-        await interaction.message.ed(view=self)
+        await interaction.message.edit(view=self)
 
     
     @discord.ui.button(label="Previous")
@@ -112,7 +111,7 @@ class MainCog(commands.Cog):
 
     #MYHOMEWORK COMMAND
     @app_commands.command(name="myhomework", description="Lists all of your homework!")
-    async def myhomework(self, interaction: discord.Interaction) -> None:
+    async def myhomework(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
         embeds = []
         doc={}
