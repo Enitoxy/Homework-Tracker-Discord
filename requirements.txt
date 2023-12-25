@@ -1,0 +1,5 @@
+discord.py==2.3.2
+motor==3.3.2
+quart==0.19.4
+colorama==0.4.6
+python-dotenv==1.0.0
