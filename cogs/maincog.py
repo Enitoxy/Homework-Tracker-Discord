@@ -1,27 +1,18 @@
 import discord
 import pymongo
-import os
 from typing import List
 from bson import ObjectId, errors
 from collections import deque
+from components import db
 
 from discord import app_commands, ui
 from discord.ext import commands
 
-from dotenv import load_dotenv
 from datetime import datetime
 now = datetime.now()
 
 
-#DOTENV
-load_dotenv()
-DB_USER = os.getenv('DB_USER')
-DB_PASS = os.getenv('DB_PASS')
-DB_CLUSTER = os.getenv('DB_CLUSTER')
-
-
-mdbclient = pymongo.MongoClient(f"mongodb+srv://{DB_USER}:{DB_PASS}@{DB_CLUSTER}.mongodb.net/?retryWrites=true&w=majority")
-registered_ids = mdbclient.registered_ids
+prod = db.client.prod
 
 
 #ADD MODAL CLASS
@@ -32,7 +23,7 @@ class addHW(ui.Modal, title="Add your homework!"):
     description = ui.TextInput(label="Description", style=discord.TextStyle.paragraph, placeholder="Give a description (optional)", required=False)
 
     async def on_submit(self, interaction: discord.Interaction):
-        result = registered_ids.homework.insert_one(
+        result = prod.homework.insert_one(
             {
                 "title": str(self.hwtitle),
                 "subject": str(self.subject),
@@ -42,7 +33,7 @@ class addHW(ui.Modal, title="Add your homework!"):
                 "author": interaction.user.id
             }
         )
-        id = result.inserted_id
+        id = None
         await interaction.response.send_message(f"Homework added successfully!\n> Unique ID: {id}", ephemeral=True)
 
 
@@ -89,7 +80,7 @@ class PaginatorView(discord.ui.View):
         self._current_page += 1
         await self.update_buttons(interaction)
         await interaction.response.edit_message(embed=embed)
-
+        
     #DELETE & MARK COMPLETE BUTTONS
 
     @property
@@ -120,7 +111,7 @@ class MainCog(commands.Cog):
         author = interaction.user.id
         key = {'author': author}
 
-        for document in registered_ids.homework.find(key):
+        for document in prod.homework.find(key):
             index = index + 1
             idlist.append(str(document['_id']))
 
@@ -158,7 +149,7 @@ class MainCog(commands.Cog):
         key = {'_id': obj}
         author = interaction.user.id
 
-        for document in registered_ids.homework.find(key):
+        for document in prod.homework.find(key):
             title = document['title']
             subject = document['subject']
             description = document['description']
